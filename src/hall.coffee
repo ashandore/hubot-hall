@@ -3,15 +3,24 @@
 
 # Hall dependencies
 hall = 			require 'hall-client'
-_ = 				require 'underscore'
+_ = 			require 'underscore'
 debug = 		require('debug')('hubot:hall')
 pjson = 		require('../package.json')
 
 class Hall extends Adapter
+	decodeRoom: (room) ->
+		#for hall, rooms should be of the form "#{room_type}-#{room_id}", so just split it up
+		res = room.split "-"
+		room_type	:	res[0]
+		room_id		:	res[1]
+
+	encodeRoom: (room_type, room_id) ->
+		"#{room_type}-#{room_id}"
 
 	send: (params, strings...) ->
 		user = @userFromParams(params)
-		@bot.sendMessage user.room_id, user.room_type, str for str in strings
+		room = @decodeRoom(user.room)
+		@bot.sendMessage room.room_id, room.room_type, str for str in strings
 
 	reply: (params, strings...) ->
 		user = @userFromParams(params)
@@ -35,17 +44,16 @@ class Hall extends Adapter
 				author =
 					id: data.agent._id
 					name: data.agent.display_name
-					room_id: data.room_id
-					room_type: (!data.participants) && 'group' || null
+					room: @encodeRoom((!data.participants) && 'group' || null, data.room_id)
 				return if @bot.session.get('_id') == author.id || !data.message || !data.message.plain
 				regex_bot_name = new RegExp("^@?#{@robot.name}(,|\\b)", "i")
 				regex_user_name = new RegExp("^@?#{@bot.session.get 'display_name'}(,|\\b)", "i")
 				message = data.message.plain
 				if message.match(regex_bot_name)
-					hubot_msg = message.replace(regex_bot_name, "#{@robot.name}:")
+					message = message.replace(regex_bot_name, "#{@robot.name}:")
 				else if message.match(regex_user_name)
-					hubot_msg = message.replace(regex_user_name, "#{@robot.name}:")
-				@receive new TextMessage(author, hubot_msg) if hubot_msg
+					message = message.replace(regex_user_name, "#{@robot.name}:")
+				@receive new TextMessage(author, message)
 
 		@io.on 'ROOM_ITEM_NEW', onRoomItemNew
 
