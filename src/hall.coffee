@@ -41,16 +41,12 @@ class Hall extends Adapter
 		onRoomItemNew = (data) =>
 			data = JSON.parse(data)
 			unless !data
-				author =
-					id: data.agent._id
+				encoded_room = @encodeRoom((!data.participants) && 'group' || null, data.room_id)
+				author = @robot.brain.userForId data.agent._id, 
 					name: data.agent.display_name
-					room: @encodeRoom((!data.participants) && 'group' || null, data.room_id)
+					room: encoded_room
+
 				return if @bot.session.get('_id') == author.id || !data.message || !data.message.plain
-
-				#Store the user if we haven't already
-				console.log "#{author.id}, #{author.name}"
-
-
 				regex_bot_name = new RegExp("^@?#{@robot.name}(,|\\b)", "i")
 				regex_user_name = new RegExp("^@?#{@bot.session.get 'display_name'}(,|\\b)", "i")
 				message = data.message.plain
